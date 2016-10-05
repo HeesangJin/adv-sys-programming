@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/time.h>
-
+//과제하기싫다..
 int readaline_and_out(FILE *fin, FILE *fout);
 
 int

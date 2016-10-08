@@ -26,3 +26,6 @@ $ ./merge /tmp/file_0001 /tmp/file_0002 f_out
 ```
 $ ls -l f_out
 ```
+```
+$ mkfile 10m 10Mega
+```

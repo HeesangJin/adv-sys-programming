@@ -18,7 +18,7 @@ $ make
 $ ./gen 2 100
 ```
 ```
-$ ls -l tmp/file_*
+$ ls -l /tmp/file_*
 ```
 ```
 $ ./merge /tmp/file_0001 /tmp/file_0002 f_out

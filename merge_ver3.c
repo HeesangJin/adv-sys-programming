@@ -8,13 +8,12 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#define FILESIZE 104857600 // 1048576 = 1024*1024 =1MB
+// 1048576 = 1024*1024 =1MB
 
 //완성
 int
 main(int argc, char *argv[])
 {
-    //FILE *fdout; //각 파일의 파일 구조체
     char *file1, *file2, *fileout, *temp_out; //mmap사용할때 사용
     char *pfile1, *pfile2, *pfileout, *cfile; // file1, file2 mmap 사용할 시 pointer
 
@@ -32,6 +31,23 @@ main(int argc, char *argv[])
     char buffer[1024], *pbuffer, *pbufferfin; // to reverse
     int sbuf, sbuffin; 
 
+    FILE *fpMe;
+    int filelen1, filelen2;
+    if((fpMe = fopen(argv[1],"rb")) == NULL){
+        printf("file open fail\n");
+        return 0;
+    }
+    fseek(fpMe, 0L, SEEK_END);
+    filelen1 = ftell(fpMe);
+    fclose(fpMe);
+
+    if((fpMe = fopen(argv[2],"rb")) == NULL){
+        printf("file open fail\n");
+        return 0;
+    }
+    fseek(fpMe, 0L, SEEK_END);
+    filelen2 = ftell(fpMe);
+    fclose(fpMe);
 
     if (argc != 4) { //실행 파라미터를 모두 안씀 
         fprintf(stderr, "usage: %s file1 file2 fout\n", argv[0]);
@@ -50,20 +66,20 @@ main(int argc, char *argv[])
         goto leave2;
     }
     write(fdout, NULL, 0);
-    ftruncate(fdout, FILESIZE * 2);
+    ftruncate(fdout, filelen1 + filelen2);
     //////////////////////////////////// 파일 메모리 맵핑
-    if((file1 = mmap(0, FILESIZE , flag, MAP_SHARED,fd1,0)) == NULL){
+    if((file1 = mmap(0, filelen1 , flag, MAP_SHARED,fd1,0)) == NULL){
         perror("mmap error");
         exit(1);
     }
 
-    if((file2 = mmap(0, FILESIZE , flag, MAP_SHARED,fd2,0)) == NULL){
+    if((file2 = mmap(0, filelen2 , flag, MAP_SHARED,fd2,0)) == NULL){
         perror("mmap error");
         exit(1);
     }
 
 
-    if((fileout = mmap(0, FILESIZE * 2 , flag, MAP_SHARED, fdout, 0)) == NULL){
+    if((fileout = mmap(0, filelen1 + filelen2 , flag, MAP_SHARED, fdout, 0)) == NULL){
         perror("mmap error");
         exit(1);
     }
@@ -77,8 +93,8 @@ main(int argc, char *argv[])
     pfileout = fileout;
     pbuffer = buffer;
 
-    rsize1 = FILESIZE;
-    rsize2 = FILESIZE;
+    rsize1 = filelen1;
+    rsize2 = filelen2;
     sbuf=0;
     sbuffin=0;
     currentFile = 1;
@@ -171,12 +187,11 @@ main(int argc, char *argv[])
     //=====
     
 leave3:
-    munmap(fileout,FILESIZE * 2); // 1024 x 1024 = 1048576 = 1Mega
+    munmap(fileout,filelen1 + filelen2);
 leave2:
-    munmap(file1,FILESIZE); // 1048576: 1Mega
-    munmap(file2,FILESIZE); // 1048576: 1Mega
+    munmap(file1,filelen1);
+    munmap(file2,filelen2);
 leave1:
-    //munmap(file2,5242880);
 leave0:
     close(fdout);
     close(fd1);

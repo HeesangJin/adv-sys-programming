@@ -1,158 +1,60 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
-#include <stdlib.h>
 #include <sys/time.h>
+//ver1(origin): fopen() & fgetc(), fputc()
+//time: 30~35 sec(in mac)
+int readaline_and_out(FILE *fin, FILE *fout);
 
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
-#define FILESIZE 104857600 // 1048576 = 1024*1024 =1MB
-
-//완성
 int
 main(int argc, char *argv[])
 {
-    //FILE *fdout; //각 파일의 파일 구조체
-    char *file1, *file2, *fileout, *temp_out; //mmap사용할때 사용
-    char *pfile1, *pfile2, *pfileout, *cfile; // file1, file2 mmap 사용할 시 pointer
-
-    int fd1, fd2, fdout; //file descriptor: 항상 필요함
+    FILE *file1, *file2, *fout; //각 파일의 파일 구조체
     int eof1 = 0, eof2 = 0; //eof(파일 끝일 경우 -1)
     long line1 = 0, line2 = 0, lineout = 0; 
     struct timeval before, after; //측정 시간 전,후
     int duration; //지속시간
     int ret = 1; //리턴
-    int flag = PROT_WRITE | PROT_READ;
-    int i=0;
-    int rsize1, rsize2, *csize; // file1 , file2 의 남은 size와 current size pointer 
-    int currentFile; // file1 or file2 선택
-
-    char buffer[1024], *pbuffer, *pbufferfin; // to reverse
-    int sbuf, sbuffin; 
-
 
     if (argc != 4) { //실행 파라미터를 모두 안씀 
         fprintf(stderr, "usage: %s file1 file2 fout\n", argv[0]);
         goto leave0;
     }
-    if ((fd1 = open(argv[1], O_RDWR|O_CREAT)) < 0) { //file1 이 없으면 에러
+    if ((file1 = fopen(argv[1], "rt")) == NULL) { //file1 이 없으면 에러
         perror(argv[1]);
         goto leave0;
     }
-    if ((fd2 = open(argv[2], O_RDWR|O_CREAT)) < 0) { //file2 이 없으면 에러
+    if ((file2 = fopen(argv[2], "rt")) == NULL) { //file2 이 없으면 에러
         perror(argv[2]);
         goto leave1;
     }
-    if ((fdout = open(argv[3], O_RDWR|O_CREAT,0644)) < 0) { //file1 이 없으면??? 에러
+    if ((fout = fopen(argv[3], "wt")) == NULL) { //file1 이 없으면??? 에러
         perror(argv[3]);
         goto leave2;
     }
-    //make fileout 200MB
-    write(fdout, NULL, 0);
-    ftruncate(fdout, FILESIZE * 2);
-    //////////////////////////////////// 파일 메모리 맵핑
-    if((file1 = mmap(0, FILESIZE , flag, MAP_SHARED,fd1,0)) == NULL){
-        perror("mmap error");
-        exit(1);
-    }
-
-    if((file2 = mmap(0, FILESIZE , flag, MAP_SHARED,fd2,0)) == NULL){
-        perror("mmap error");
-        exit(1);
-    }
-
-
-    if((fileout = mmap(0, FILESIZE * 2 , flag, MAP_SHARED, fdout, 0)) == NULL){
-        perror("mmap error");
-        exit(1);
-    }
-    //////////////////////////////////// //파일 메모리 맵핑
-
+    
     gettimeofday(&before, NULL); //시간 측정 시작
+    //==============Core
+    do {
+        /*readaline_and_out 리턴값이 
+        1이면: if(0)-> else: 문자 끝에 도달하였다. 이제 readaline_and_out()안함
+        0이면: if(1) : 문자끝에 도달하지 않았으므로, 라인 개수를 증가시킨다.(line++, lineout++)
+        */
 
-    // initialize;
-    pfile1 = file1;
-    pfile2 = file2;
-    pfileout = fileout;
-    pbuffer = buffer;
-
-    rsize1 = FILESIZE;
-    rsize2 = FILESIZE;
-    sbuf=0;
-    sbuffin=0;
-    currentFile = 1;
-
-    while(rsize1 && rsize2){
-        if(currentFile == 1){
-            rsize1--;
-            sbuf++;
-            if((*pbuffer++ = *pfile1++) == '\n'){
-                currentFile=2;
-                pbuffer--; //찾았으므로 제자리 찾아가기
-                pbufferfin = pbuffer--; //마지막껀 \n이므로 제외하고 마지막에 넣음
-                sbuf--;
-                while(sbuf--){  //마지막껀 \n이므로 제외해야함
-                    *pfileout++ = *pbuffer--;
-                }
-                *pfileout++ = *pbufferfin;
-                //buffer reinitialize
-                pbuffer = buffer;
-                sbuf=0;
-            }
+        if (!eof1) {
+            if (!readaline_and_out(file1, fout)) { //param: input1, result 
+                line1++; lineout++;
+            } else
+                eof1 = 1; //이제 이 파일은 검사안함
         }
-        else if(currentFile == 2){
-            rsize2--;
-            sbuf++;
-            if((*pbuffer++ = *pfile2++) == '\n'){
-                currentFile=1;
-                pbuffer--; //찾았으므로 제자리 찾아가기
-                pbufferfin = pbuffer--; //마지막껀 \n이므로 제외하고 마지막에 넣음
-                sbuf--;
-                while(sbuf--){  //마지막껀 \n이므로 제외해야함
-                    *pfileout++ = *pbuffer--;
-                }
-                *pfileout++ = *pbufferfin;
-                //buffer reinitialize
-                pbuffer = buffer;
-                sbuf=0;
-            }
+        if (!eof2) {
+            if (!readaline_and_out(file2, fout)) { //param: input2, result
+                line2++; lineout++;
+            } else
+                eof2 = 1;
         }
-    }
-
-    while(rsize1){
-        rsize1--;
-        sbuf++;
-        if((*pbuffer++ = *pfile1++) == '\n'){
-            pbuffer--; //찾았으므로 제자리 찾아가기
-            pbufferfin = pbuffer--; //마지막껀 \n이므로 제외하고 마지막에 넣음
-            sbuf--;
-            while(sbuf--){  //마지막껀 \n이므로 제외해야함
-                *pfileout++ = *pbuffer--;
-            }
-            *pfileout++ = *pbufferfin;
-            //buffer reinitialize
-            pbuffer = buffer;
-            sbuf=0;
-        }
-    }
-    while(rsize2){
-        rsize2--;
-        sbuf++;
-        if((*pbuffer++ = *pfile2++) == '\n'){
-            pbuffer--; //찾았으므로 제자리 찾아가기
-            pbufferfin = pbuffer--; //마지막껀 \n이므로 제외하고 마지막에 넣음
-            sbuf--;
-            while(sbuf--){  //마지막껀 \n이므로 제외해야함
-                *pfileout++ = *pbuffer--;
-            }
-            *pfileout++ = *pbufferfin;
-            //buffer reinitialize
-            pbuffer = buffer;
-            sbuf=0;
-        }
-    }
+    } while (!eof1 || !eof2); //두 파일 모두 읽을 때까지 반복
+    //==============//Core
 
     gettimeofday(&after, NULL); //시간 측정 종료
     
@@ -164,15 +66,38 @@ main(int argc, char *argv[])
     //=====
     
 leave3:
-    munmap(fileout,FILESIZE * 2); // 1024 x 1024 = 1048576 = 1Mega
+    fclose(fout);
 leave2:
-    munmap(file1,FILESIZE); // 1048576: 1Mega
-    munmap(file2,FILESIZE); // 1048576: 1Mega
+    fclose(file2);
 leave1:
-    //munmap(file2,5242880);
+    fclose(file1);
 leave0:
-    close(fdout);
-    close(fd1);
-    close(fd2);
     return ret; 
 }
+
+/* Read a line from fin and write it to fout */
+/* return 1 if fin meets end of file */
+int //fgetc, fputc는 자리 쓰면 다음 포인터로 알아서 넘어가는 듯
+readaline_and_out(FILE *fin, FILE *fout)
+{    
+    //ch: fgetc로 넣어오는 문자. (일반 문자 또는 eof문자)
+    //count: 문자를 몇개 읽었는지 확인. 0인지 아닌지만 필요한듯.
+    int ch, count = 0;
+
+    do {
+        if ((ch = fgetc(fin)) == EOF) { //파일 끝이면
+            //파일 끝인데 아예 없으면, 줄바꿈도 쓰면 안됨. 
+            //즉, file1은 다쓰고 file2만 남았으면, file1은 \n도 쓰면 안되기 때문에 넣은듯
+            if (!count) //(이것도 각 파일마다 한번만 실행)
+                return 1; //카운트 된 줄이 없으면 리턴1
+            else {
+                fputc(0x0a, fout); // 파일 끝이면, 줄바꿈 문자를 씀(각 파일마다 한번만 실행될듯)
+                break; //카운트 된 줄이 하나 있으므로 리턴0
+            }
+        }
+        fputc(ch, fout);
+        count++;
+    } while (ch != 0x0a); //줄바꿈 라인이면 그만둠
+    return 0;
+}
+

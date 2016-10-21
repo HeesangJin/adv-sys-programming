@@ -88,6 +88,8 @@ main(int argc, char *argv[])
             rsize1--;
             sbuf++;
             if((*pbuffer++ = *pfile1++) == '\n'){
+                line1++;
+                lineout++;
                 currentFile=2;
                 pbuffer--; //찾았으므로 제자리 찾아가기
                 pbufferfin = pbuffer--; //마지막껀 \n이므로 제외하고 마지막에 넣음
@@ -105,6 +107,8 @@ main(int argc, char *argv[])
             rsize2--;
             sbuf++;
             if((*pbuffer++ = *pfile2++) == '\n'){
+                line2++;
+                lineout++;
                 currentFile=1;
                 pbuffer--; //찾았으므로 제자리 찾아가기
                 pbufferfin = pbuffer--; //마지막껀 \n이므로 제외하고 마지막에 넣음
@@ -124,6 +128,8 @@ main(int argc, char *argv[])
         rsize1--;
         sbuf++;
         if((*pbuffer++ = *pfile1++) == '\n'){
+            line1++;
+            lineout++;
             pbuffer--; //찾았으므로 제자리 찾아가기
             pbufferfin = pbuffer--; //마지막껀 \n이므로 제외하고 마지막에 넣음
             sbuf--;
@@ -140,6 +146,8 @@ main(int argc, char *argv[])
         rsize2--;
         sbuf++;
         if((*pbuffer++ = *pfile2++) == '\n'){
+            line2++;
+            lineout++;
             pbuffer--; //찾았으므로 제자리 찾아가기
             pbufferfin = pbuffer--; //마지막껀 \n이므로 제외하고 마지막에 넣음
             sbuf--;

@@ -10,11 +10,7 @@
 
 #define FILESIZE 1048576 // 1048576 = 1024*1024 =1MB
 
-//얘는 파일 번갈아 쓰는것만 
-//ver2 : open() & mmap()
-// fopen() 대신 open()사용
-// fgetc() 대신 mmap()사용
-// fputc() 대신 fileout[] = file[] 사용
+//no reverse
 
 //1048576: 1Mega
 int

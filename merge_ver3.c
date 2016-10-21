@@ -10,13 +10,7 @@
 
 #define FILESIZE 104857600 // 1048576 = 1024*1024 =1MB
 
-//이제부터 reverse
-//ver2 : open() & mmap()
-// fopen() 대신 open()사용
-// fgetc() 대신 mmap()사용
-// fputc() 대신 fileout[] = file[] 사용
-
-//1048576: 1Mega
+//완성
 int
 main(int argc, char *argv[])
 {

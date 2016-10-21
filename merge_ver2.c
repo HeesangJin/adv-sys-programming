@@ -35,7 +35,8 @@ main(int argc, char *argv[])
     int rsize1, rsize2, *csize; // file1 , file2 의 남은 size와 current size pointer 
     int currentFile; // file1 or file2 선택
 
-    char buffer[1024];
+    char buffer[1024], *pbuffer, *pbufferfin; // to reverse
+    int sbuf, sbuffin; 
 
     if (argc != 4) { //실행 파라미터를 모두 안씀 
         fprintf(stderr, "usage: %s file1 file2 fout\n", argv[0]);
@@ -77,23 +78,28 @@ main(int argc, char *argv[])
     pfile1 = file1;
     pfile2 = file2;
     pfileout = fileout;
+    pbuffer = buffer;
+
     rsize1 = FILESIZE;
     rsize2 = FILESIZE;
-
+    sbuf=0;
+    sbuffin=0;
     currentFile = 1;
 
     while(rsize1 && rsize2){
         if(currentFile == 1){
+            rsize1--;
+            sbuf++;
             if((*pfileout++ = *pfile1++) == '\n'){
                 currentFile=2;
             }
-            rsize1--;
         }
         else if(currentFile == 2){
+            rsize2--;
+            sbuf++;
             if((*pfileout++ = *pfile2++) == '\n'){
                 currentFile=1;
             }
-            rsize2--;
         }
     }
 

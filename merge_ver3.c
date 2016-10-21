@@ -32,6 +32,7 @@ main(int argc, char *argv[])
     char buffer[1024], *pbuffer, *pbufferfin; // to reverse
     int sbuf, sbuffin; 
 
+
     if (argc != 4) { //실행 파라미터를 모두 안씀 
         fprintf(stderr, "usage: %s file1 file2 fout\n", argv[0]);
         goto leave0;
@@ -44,10 +45,12 @@ main(int argc, char *argv[])
         perror(argv[2]);
         goto leave1;
     }
-    if ((fdout = open(argv[3], O_RDWR|O_CREAT)) < 0) { //file1 이 없으면??? 에러
+    if ((fdout = open(argv[3], O_RDWR|O_CREAT,0644)) < 0) { //file1 이 없으면??? 에러
         perror(argv[3]);
         goto leave2;
     }
+    write(fdout, NULL, 0);
+    ftruncate(fdout, FILESIZE * 2);
     //////////////////////////////////// 파일 메모리 맵핑
     if((file1 = mmap(0, FILESIZE , flag, MAP_SHARED,fd1,0)) == NULL){
         perror("mmap error");
@@ -169,5 +172,6 @@ leave1:
 leave0:
     close(fdout);
     close(fd1);
+    close(fd2);
     return ret; 
 }

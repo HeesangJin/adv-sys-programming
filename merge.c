@@ -28,12 +28,10 @@ main(int argc, char *argv[])
     int rsize1, rsize2, *csize; // file1 , file2 의 남은 size와 current size pointer 
     int currentFile; // file1 or file2 선택
 
-    char buffer[1024], *pbuffer, *pbufferfin; // to reverse
-    int sbuf, sbuffin; 
+    char *head_line, *tail_line, *index_line; // to reverse
 
     FILE *fpMe;
     int filelen1, filelen2;
-    gettimeofday(&before, NULL); //시간 측정 시작
     if((fpMe = fopen(argv[1],"rb")) == NULL){
         printf("file open fail\n");
         return 0;
@@ -86,100 +84,85 @@ main(int argc, char *argv[])
     }
     //////////////////////////////////// //파일 메모리 맵핑
 
-    
+    gettimeofday(&before, NULL); //시간 측정 시작
 
     // initialize;
     pfile1 = file1;
     pfile2 = file2;
     pfileout = fileout;
-    pbuffer = buffer;
 
     rsize1 = filelen1;
     rsize2 = filelen2;
-    sbuf=0;
-    sbuffin=0;
     currentFile = 1;
 
+    head_line = pfile1;
     while(rsize1 && rsize2){
         if(currentFile == 1){
             rsize1--;
-            sbuf++;
-            if((*pbuffer++ = *pfile1++) == '\n'){
-                line1++;
-                lineout++;
-                currentFile=2;
-                pbuffer--; //찾았으므로 제자리 찾아가기
-                pbufferfin = pbuffer--; //마지막껀 \n이므로 제외하고 마지막에 넣음
-                sbuf--;
-                while(sbuf--){  //마지막껀 \n이므로 제외해야함
-                    *pfileout++ = *pbuffer--;
+            if((*pfile1++) == '\n'){
+                line1++; currentFile=2;
+                tail_line = pfile1; index_line = --tail_line; //현재 위치를 잡고, tail은 '\n'을 가르킴
+                while(1){  //마지막껀 \n이므로 제외해야함
+                    *pfileout++ = *(--index_line); //index는 '\n'보다 하나 전부터 index를 하나씩 뒤로 미루면서
+                    if(index_line==head_line){ //라인의 첫번째 인덱스면
+                        *pfileout++ = *tail_line; //'\n'을 넣음
+                        head_line = pfile2; //file1이 끝났으므로 file2의 다음 위치를 head로 잡음
+                        break;
+                    }
                 }
-                *pfileout++ = *pbufferfin;
-                //buffer reinitialize
-                pbuffer = buffer;
-                sbuf=0;
             }
         }
         else if(currentFile == 2){
             rsize2--;
-            sbuf++;
-            if((*pbuffer++ = *pfile2++) == '\n'){
-                line2++;
-                lineout++;
-                currentFile=1;
-                pbuffer--; //찾았으므로 제자리 찾아가기
-                pbufferfin = pbuffer--; //마지막껀 \n이므로 제외하고 마지막에 넣음
-                sbuf--;
-                while(sbuf--){  //마지막껀 \n이므로 제외해야함
-                    *pfileout++ = *pbuffer--;
+            if((*pfile2++) == '\n'){
+                line2++; currentFile=1;
+                tail_line = pfile2; index_line = --tail_line; //현재 위치를 잡고, tail은 '\n'을 가르킴
+                while(1){  //마지막껀 \n이므로 제외해야함
+                    *pfileout++ = *(--index_line); //index는 '\n'보다 하나 전부터 index를 하나씩 뒤로 미루면서
+                    if(index_line==head_line){ //라인의 첫번째 인덱스면
+                        *pfileout++ = *tail_line; //'\n'을 넣음
+                        head_line = pfile1; //file2이 끝났으므로 file1의 다음 위치를 head로 잡음
+                        break;
+                    }
                 }
-                *pfileout++ = *pbufferfin;
-                //buffer reinitialize
-                pbuffer = buffer;
-                sbuf=0;
             }
         }
     }
 
     while(rsize1){
         rsize1--;
-        sbuf++;
-        if((*pbuffer++ = *pfile1++) == '\n'){
+        if((*pfile1++) == '\n'){
             line1++;
-            lineout++;
-            pbuffer--; //찾았으므로 제자리 찾아가기
-            pbufferfin = pbuffer--; //마지막껀 \n이므로 제외하고 마지막에 넣음
-            sbuf--;
-            while(sbuf--){  //마지막껀 \n이므로 제외해야함
-                *pfileout++ = *pbuffer--;
+            tail_line = pfile1; index_line = --tail_line; //현재 위치를 잡고, tail은 '\n'을 가르킴
+            while(1){  //마지막껀 \n이므로 제외해야함
+                *pfileout++ = *(--index_line); //index는 '\n'보다 하나 전부터 index를 하나씩 뒤로 미루면서
+                if(index_line==head_line){ //라인의 첫번째 인덱스면
+                    *pfileout++ = *tail_line; //'\n'을 넣음
+                    head_line = pfile1; //다음 위치를 head로 잡음
+                    break;
+                }
             }
-            *pfileout++ = *pbufferfin;
-            //buffer reinitialize
-            pbuffer = buffer;
-            sbuf=0;
         }
     }
     while(rsize2){
         rsize2--;
-        sbuf++;
-        if((*pbuffer++ = *pfile2++) == '\n'){
+        if((*pfile2++) == '\n'){
             line2++;
-            lineout++;
-            pbuffer--; //찾았으므로 제자리 찾아가기
-            pbufferfin = pbuffer--; //마지막껀 \n이므로 제외하고 마지막에 넣음
-            sbuf--;
-            while(sbuf--){  //마지막껀 \n이므로 제외해야함
-                *pfileout++ = *pbuffer--;
+            tail_line = pfile2; index_line = --tail_line; //현재 위치를 잡고, tail은 '\n'을 가르킴
+            while(1){  //마지막껀 \n이므로 제외해야함
+                *pfileout++ = *(--index_line); //index는 '\n'보다 하나 전부터 index를 하나씩 뒤로 미루면서
+                if(index_line==head_line){ //라인의 첫번째 인덱스면
+                    *pfileout++ = *tail_line; //'\n'을 넣음
+                    head_line = pfile2; //다음 위치를 head로 잡음
+                    break;
+                }
             }
-            *pfileout++ = *pbufferfin;
-            //buffer reinitialize
-            pbuffer = buffer;
-            sbuf=0;
         }
     }
 
     gettimeofday(&after, NULL); //시간 측정 종료
     
+    lineout = line1 + line2;
     //=====결과 출력(여긴 그대로 냅두면 될듯)
     duration = (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec);
     printf("Processing time = %d.%06d sec\n", duration / 1000000, duration % 1000000);

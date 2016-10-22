@@ -14,85 +14,80 @@
 int
 main(int argc, char *argv[])
 {
-    char *file1, *file2, *fileout, *temp_out; //mmap사용할때 사용
-    char *pfile1, *pfile2, *pfileout, *cfile; // file1, file2 mmap 사용할 시 pointer
+    int ret = 1; //리턴
+    long line1 = 0, line2 = 0, lineout = 0; //line count
+    struct timeval before, after; //측정 시간 전,후
+    int duration;
 
     int fd1, fd2, fdout; //file descriptor: 항상 필요함
-    int eof1 = 0, eof2 = 0; //eof(파일 끝일 경우 -1)
-    long line1 = 0, line2 = 0, lineout = 0; 
-    struct timeval before, after; //측정 시간 전,후
-    int duration; //지속시간
-    int ret = 1; //리턴
-    int flag = PROT_WRITE | PROT_READ;
-    int i=0;
-    int rsize1, rsize2, *csize; // file1 , file2 의 남은 size와 current size pointer 
+    char *file1, *file2, *fileout, *temp_out; //mmap사용할때 사용
+    char *pfile1, *pfile2, *pfileout, *cfile; // file1, file2 mmap 사용할 시 pointer
+    int rsize1, rsize2, *csize; // file1 , file2 의 남은 size
     int currentFile; // file1 or file2 선택
 
+    int flag = PROT_WRITE | PROT_READ;
     char *head_line, *tail_line, *index_line; // to reverse
-
     FILE *fpMe;
     int filelen1, filelen2;
+
+    //file size check
     if((fpMe = fopen(argv[1],"rb")) == NULL){
-        printf("file open fail\n");
-        return 0;
+        perror(argv[1]);
+        goto leave0;
     }
     fseek(fpMe, 0L, SEEK_END);
     filelen1 = ftell(fpMe);
     fclose(fpMe);
 
     if((fpMe = fopen(argv[2],"rb")) == NULL){
-        printf("file open fail\n");
-        return 0;
+        perror(argv[2]);
+        goto leave0;
     }
     fseek(fpMe, 0L, SEEK_END);
     filelen2 = ftell(fpMe);
     fclose(fpMe);
 
-    if (argc != 4) { //실행 파라미터를 모두 안씀 
+    //file descriptor
+    if (argc != 4) {
         fprintf(stderr, "usage: %s file1 file2 fout\n", argv[0]);
         goto leave0;
     }
-    if ((fd1 = open(argv[1], O_RDWR|O_CREAT)) < 0) { //file1 이 없으면 에러
+    if ((fd1 = open(argv[1], O_RDWR|O_CREAT)) < 0) {
         perror(argv[1]);
         goto leave0;
     }
-    if ((fd2 = open(argv[2], O_RDWR|O_CREAT)) < 0) { //file2 이 없으면 에러
+    if ((fd2 = open(argv[2], O_RDWR|O_CREAT)) < 0) {
         perror(argv[2]);
         goto leave1;
     }
-    if ((fdout = open(argv[3], O_RDWR|O_CREAT,0644)) < 0) { //file1 이 없으면??? 에러
+    if ((fdout = open(argv[3], O_RDWR|O_CREAT,0644)) < 0) {
         perror(argv[3]);
         goto leave2;
     }
     write(fdout, NULL, 0);
     ftruncate(fdout, filelen1 + filelen2);
-    //////////////////////////////////// 파일 메모리 맵핑
+
+    //file - memory mapping
     if((file1 = mmap(0, filelen1 , flag, MAP_SHARED,fd1,0)) == NULL){
         perror("mmap error");
-        exit(1);
+        goto leave3;
     }
-
     if((file2 = mmap(0, filelen2 , flag, MAP_SHARED,fd2,0)) == NULL){
         perror("mmap error");
-        exit(1);
+        goto leave4;
     }
-
-
     if((fileout = mmap(0, filelen1 + filelen2 , flag, MAP_SHARED, fdout, 0)) == NULL){
         perror("mmap error");
-        exit(1);
+        goto leave5;
     }
-    //////////////////////////////////// //파일 메모리 맵핑
 
     gettimeofday(&before, NULL); //시간 측정 시작
 
     // initialize;
-    pfile1 = file1;
-    pfile2 = file2;
+    pfile1 = file1; pfile2 = file2;
     pfileout = fileout;
 
-    rsize1 = filelen1;
-    rsize2 = filelen2;
+    rsize1 = filelen1; rsize2 = filelen2;
     currentFile = 1;
 
     head_line = pfile1;
@@ -169,16 +164,18 @@ main(int argc, char *argv[])
     printf("File1 = %ld, File2= %ld, Total = %ld Lines\n", line1, line2, lineout);
     ret = 0;
     //=====
-    
-leave3:
+leave6:
     munmap(fileout,filelen1 + filelen2);
-leave2:
-    munmap(file1,filelen1);
+leave5:
     munmap(file2,filelen2);
-leave1:
-leave0:
+leave4: 
+    munmap(file1,filelen1);
+leave3:
     close(fdout);
-    close(fd1);
+leave2:
     close(fd2);
+leave1:
+    close(fd1);
+leave0:
     return ret; 
 }

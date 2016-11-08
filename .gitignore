@@ -29,7 +29,8 @@
 *.hex
 gen
 merge
-epoll
+chat
+f_out
 
 # Debug files
 *.dSYM/
@@ -40,7 +41,3 @@ _file_*
 
 # OS files
 .DS_Store
-
-#my
-*Mega
-f_out

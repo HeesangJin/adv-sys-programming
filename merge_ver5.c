@@ -33,7 +33,7 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "usage: %s file1 file2 fout\n", argv[0]);
         goto leave0;
     }
-    //file descriptor
+    //file descriptor 여길 O_RDONLY 로 하면 segmentation error가 나타남
     if((fd1 = open(argv[1], O_RDWR)) < 0){
         perror(argv[1]);
         goto leave0;

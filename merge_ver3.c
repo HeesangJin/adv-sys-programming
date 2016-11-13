@@ -11,24 +11,29 @@
 // 1048576 = 1024*1024 =1MB
 
 //완성
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     int ret = 1; //리턴
     long line1 = 0, line2 = 0, lineout = 0; //line count
     struct timeval before, after; //측정 시간 전,후
     int duration;
-
+    
     int fd1, fd2, fdout; //file descriptor: 항상 필요함
     char *file1, *file2, *fileout, *temp_out; //mmap사용할때 사용
     char *pfile1, *pfile2, *pfileout, *cfile; // file1, file2 mmap 사용할 시 pointer
     int rsize1, rsize2, *csize; // file1 , file2 의 남은 size
     int currentFile; // file1 or file2 선택
-
+    
     int flag = PROT_WRITE | PROT_READ;
     char *head_line, *tail_line, *index_line; // to reverse
     FILE *fpMe;
     int filelen1, filelen2;
+    
+    //params check: leave0
+    if (argc != 4) {
+        fprintf(stderr, "usage: %s file1 file2 fout\n", argv[0]);
+        goto leave0;
+    }
 
     //file size check
     if((fpMe = fopen(argv[1],"rb")) == NULL){
@@ -38,7 +43,7 @@ main(int argc, char *argv[])
     fseek(fpMe, 0L, SEEK_END);
     filelen1 = ftell(fpMe);
     fclose(fpMe);
-
+    
     if((fpMe = fopen(argv[2],"rb")) == NULL){
         perror(argv[2]);
         goto leave0;
@@ -46,12 +51,9 @@ main(int argc, char *argv[])
     fseek(fpMe, 0L, SEEK_END);
     filelen2 = ftell(fpMe);
     fclose(fpMe);
-
+    
     //file descriptor
-    if (argc != 4) {
-        fprintf(stderr, "usage: %s file1 file2 fout\n", argv[0]);
-        goto leave0;
-    }
+
     if ((fd1 = open(argv[1], O_RDWR|O_CREAT)) < 0) {
         perror(argv[1]);
         goto leave0;
@@ -66,7 +68,7 @@ main(int argc, char *argv[])
     }
     write(fdout, NULL, 0);
     ftruncate(fdout, filelen1 + filelen2);
-
+    
     //file - memory mapping
     if((file1 = mmap(0, filelen1 , flag, MAP_SHARED,fd1,0)) == NULL){
         perror("mmap error");
@@ -80,16 +82,16 @@ main(int argc, char *argv[])
         perror("mmap error");
         goto leave5;
     }
-
+    
     gettimeofday(&before, NULL); //시간 측정 시작
-
+    
     // initialize;
     pfile1 = file1; pfile2 = file2;
     pfileout = fileout;
-
+    
     rsize1 = filelen1; rsize2 = filelen2;
     currentFile = 1;
-
+    
     head_line = pfile1;
     while(rsize1 && rsize2){
         if(currentFile == 1){
@@ -123,7 +125,7 @@ main(int argc, char *argv[])
             }
         }
     }
-
+    
     while(rsize1){
         rsize1--;
         if((*pfile1++) == '\n'){
@@ -154,7 +156,7 @@ main(int argc, char *argv[])
             }
         }
     }
-
+    
     gettimeofday(&after, NULL); //시간 측정 종료
     
     lineout = line1 + line2;
@@ -168,7 +170,7 @@ leave6:
     munmap(fileout,filelen1 + filelen2);
 leave5:
     munmap(file2,filelen2);
-leave4: 
+leave4:
     munmap(file1,filelen1);
 leave3:
     close(fdout);

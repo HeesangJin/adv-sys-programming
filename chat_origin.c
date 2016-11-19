@@ -8,17 +8,10 @@
 #include <sys/time.h>
 #include <termios.h>
 
-// epoll ver.
-#include <sys/epoll.h>
-#define MAX_EVENTS 10
-
-
 #define IP "127.0.0.1"
 #define PORT 3001
 #define MAX_CLIENT 1024
 #define MAX_DATA 1024
-
-
 
 static struct termios term_old;
 void initTermios(void);
@@ -76,13 +69,6 @@ launch_chat(void)
     int i = 1;
     struct timeval tm;
 
-    //epoll
-    struct epoll_event ev, events[MAX_EVENTS];
-    int listen_sock, conn_sock, nfds, epollfd;
-    int j;
-    //=epoll
-
-
     if ((ret = clientSock = socket(PF_INET, SOCK_STREAM, 0)) == -1) {
         perror("socket");
         goto leave;
@@ -111,65 +97,45 @@ launch_chat(void)
         goto leave1;
     }*/
 
-    epollfd = epoll_create(10); //등록할 fd 최대 개수
-    if (epollfd == -1) {
-        perror("epoll_create");
-        exit(EXIT_FAILURE);
-    }
-
-    //epoll: 관심있는 fd(clientSock)등록
-
-    //ev.events  = EPOLLIN | EPOLLOUT | EPOLLERR; (EPOLLET 엣지트리거..?)
-    ev.events = EPOLLIN;
-    ev.data.fd = clientSock;
-    //EPOLL_CTL_ADD <-> EPOLL_CTL_DEL
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, clientSock, &ev) == -1) {
-        perror("epoll_ctl: clientSock");
-        exit(EXIT_FAILURE);
-    }
-
-    //키보드 입력 등록(0)
-    ev.events = EPOLLIN;
-    ev.data.fd = 0;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, 0, &ev) == -1) {
-        perror("epoll_ctl: stdin");
-        exit(EXIT_FAILURE);
-    }
-
-    tm.tv_sec = 0; tm.tv_usec = 1000; // tv_usec: 1000마이크로 초. 즉, 1밀리초
+    tm.tv_sec = 0; tm.tv_usec = 1000; // 1000마이크로 초. 즉, 1밀리초
     while (1) {
+        FD_ZERO(&rfds); FD_ZERO(&wfds); FD_ZERO(&efds);
+        //FD_SET(clientSock, &wfds);
+        FD_SET(clientSock, &rfds);
+        FD_SET(clientSock, &efds);
+        FD_SET(0, &rfds);
 
-        //int  epoll_wait(int  epfd,  struct epoll_event * events, int maxevents, int timeout);
-        //1. epollfd, 2. set된 event들, 3. 받아들일 최대 event개수, 
-        //4. timeout: -1: 계속 기다림(blocking), 0: 바로 리턴(non blocking)
-        if ((nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1)) == -1) {
-            perror("epoll_pwait");
-            exit(EXIT_FAILURE);
+        //rfds: 읽을 것이 있는지 확인할 목록
+        //wfds: 쓸 것이 있는지 확인할 목록
+        //efds: 예외사항이 있는지 확인할 목록. 에러가 있는지?
+        //tm: 기다릴 시간. NULL이면 무한정 기다림. 0이면 바로 리턴. 얘도 어디다가 쓰는건지 모르겠네
+        if ((ret = select(clientSock + 1, &rfds, &wfds, &efds, &tm)) < 0) {
+            perror("select");
+            goto leave1;
+        } else if (!ret)	// nothing happened within tm
+            continue; //다시 기다림
+        if (FD_ISSET(clientSock, &efds)) {
+            printf("Connection closed\n");
+            goto leave1;
         }
-
-        //epoll
-        for(j=0; j<nfds; j++){ 
-            //1. 서버로 부터 메시지가 온 경우
-            if (events[j].data.fd == clientSock){
-                if (!(ret = recv(clientSock, rdata, MAX_DATA, 0))) {
+        if (FD_ISSET(clientSock, &rfds)) {
+            if (!(ret = recv(clientSock, rdata, MAX_DATA, 0))) {
                 printf("Connection closed by remote host\n");
                 goto leave1;
-                } 
-                else if (ret > 0) {
-                    for (i = 0; i < ret; i++) {
-                        printf("%c", rdata[i]);
-                    }
-                    fflush(stdout);
-                } 
-                else
-                    break;
-            }
-            //2. 키보드 입력 된 경우(stdin)
-            else if(events[j].data.fd == 0){
-                int ch = getchar();
-                if ((ret = send(clientSock, &ch, 1, 0)) < 0)
-                    goto leave1;
-            }
+            } else if (ret > 0) {
+                for (i = 0; i < ret; i++) {
+                    printf("%c", rdata[i]);
+                }
+                fflush(stdout);
+            } else
+                break;
+        }
+        if (FD_ISSET(0, &rfds)) {
+            //int ch = getchar();
+            char ch;
+            scanf("%c", &ch);
+            if ((ret = send(clientSock, &ch, 1, 0)) < 0)
+                goto leave1;
         }
     }
 leave1:

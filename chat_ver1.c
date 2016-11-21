@@ -185,12 +185,20 @@ launch_server(void)
     int serverSock, acceptedSock[20];
     int num_accepted = 0;
     struct sockaddr_in Addr;
-    socklen_t AddrSize = sizeof(Addr);
+    
+    //epoll
+    struct epoll_event ev, events[MAX_EVENTS];
+    int nfds, epollfd;
+
+    struct timeval tm;
 
     char data[MAX_DATA], *p;
     int ret, count, i = 1;
 
-    int j=0;
+    int j;
+
+
+    socklen_t AddrSize = sizeof(Addr);
 
     //SOCK_STREAM: TCP
     //PF_INET: IPv4 인터넷 프로토콜을 사용해 통신
@@ -297,7 +305,9 @@ launch_server(void)
             }
         }
     }
-    close(acceptedSock);
+    for(j=0; j<num_accepted; j++){
+        close(acceptedSock[j]);
+    }
 error:
     close(serverSock);
 leave:

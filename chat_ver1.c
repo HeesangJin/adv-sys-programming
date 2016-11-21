@@ -289,16 +289,17 @@ launch_server(void)
                 fflush(stdout);
                 //출력 버퍼에 있는 값들 바로 출력. 이렇게 해줘야 바로바로 출력됨.
 
-                p = data;
-
                 //2. 모든 클라이언트에 메시지 쏴줌
                 for(j=0; j<num_accepted; j++){
-                    while (count) {
-                        if ((ret = send(acceptedSock[j], p, count, 0)) < 0) {
+                    int temp_count = count;
+                    p = data;
+                    while (temp_count) {
+                        if ((ret = send(acceptedSock[j], p, temp_count, 0)) < 0) {
                             perror("send");
+                            close(acceptedSock[j]);
                             break;
                         }
-                        count -= ret; //혹시 메시지가 덜 send됐으면, 남은 메시지도 이어서 쭉 보내줌
+                        temp_count -= ret; //혹시 메시지가 덜 send됐으면, 남은 메시지도 이어서 쭉 보내줌
                         p = p + ret;
                     }
                 }

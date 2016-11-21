@@ -182,12 +182,15 @@ leave:
 int
 launch_server(void)
 {
-    int serverSock, acceptedSock;
+    int serverSock, acceptedSock[20];
+    int num_accepted = 0;
     struct sockaddr_in Addr;
     socklen_t AddrSize = sizeof(Addr);
 
     char data[MAX_DATA], *p;
     int ret, count, i = 1;
+
+    int j=0;
 
     //SOCK_STREAM: TCP
     //PF_INET: IPv4 인터넷 프로토콜을 사용해 통신
@@ -209,52 +212,91 @@ launch_server(void)
     }
 
     //listen(fd, 최대 연결을 기다릴 큐의 길이: 보통5)
-    if ((ret = listen(serverSock, 1))) {
+    if ((ret = listen(serverSock, 5))) {
         perror("listen");
         goto error;
     }
 
-    if ((acceptedSock = accept(serverSock, (struct sockaddr*)&Addr, &AddrSize)) < 0) {
-        perror("accept");
-        ret = -1;
-        goto error;
+    epollfd = epoll_create(10); //등록할 fd 최대 개수
+    if (epollfd == -1) {
+        perror("epoll_create");
+        exit(EXIT_FAILURE);
     }
 
-    //inet_ntoa: little endian <-> big endian 변환?
-    printf("[SERVER] Connected to %s\n", inet_ntoa(*(struct in_addr *)&Addr.sin_addr));
-    //close(serverSock);
+    //epoll: 관심있는 fd(clientSock)등록
 
+    //serverSock 등록
+    //ev.events  = EPOLLIN | EPOLLOUT | EPOLLERR; (EPOLLET 엣지트리거..?)
+    ev.events = EPOLLIN;
+    ev.data.fd = serverSock;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, serverSock, &ev) == -1) {
+        perror("epoll_ctl: serverSock");
+        exit(EXIT_FAILURE);
+    }
+
+    tm.tv_sec = 0; tm.tv_usec = 1000; // tv_usec: 1000마이크로 초. 즉, 1밀리초
     while (1) {
-        //recv 마지막 0은 flag: 상관x
-        if (!(ret = count = recv(acceptedSock, data, MAX_DATA, 0))) {
-            fprintf(stderr, "Connect Closed by Client\n");
-            break;
+        //int  epoll_wait(int  epfd,  struct epoll_event * events, int maxevents, int timeout);
+        //1. epollfd, 2. set된 event들, 3. 받아들일 최대 event개수, 
+        //4. timeout: -1: 계속 기다림(blocking), 0: 바로 리턴(non blocking)
+        if ((nfds = epoll_wait(epollfd, events, MAX_EVENTS, tm)) == -1) {
+            perror("epoll_pwait");
+            exit(EXIT_FAILURE);
         }
-        if (ret < 0) {
-            perror("recv");
-            break;
-        }
-        //printf("[%d]", count); fflush(stdout);
 
-        //1. 먼저 나한테 출력하고
-        for (i = 0; i < count; i++)
-            printf("%c", data[i]);
-        fflush(stdout);
-        //출력 버퍼에 있는 값들 바로 출력. 이렇게 해줘야 바로바로 출력됨.
+        //epoll
+        for(j=0; j<nfds; j++){ 
+            //1. serverSock으로 새로운 클라이언트 요청이 왔을 경우
+            if (events[j].data.fd == serverSock){
+                if ((acceptedSock[num_accepted++] = accept(serverSock, (struct sockaddr*)&Addr, &AddrSize)) < 0) {
+                    perror("accept");
+                    ret = -1;
+                    goto error;
+                }
 
-        p = data;
-
-        //2. 클라이언트에 메시지 쏴줌
-        while (count) {
-            if ((ret = send(acceptedSock, p, count, 0)) < 0) {
-                perror("send");
-                break;
+                //acceptedSock 등록
+                ev.events = EPOLLIN;
+                ev.data.fd = acceptedSock[num_accepted-1];
+                if (epoll_ctl(epollfd, EPOLL_CTL_ADD, acceptedSock[num_accepted-1], &ev) == -1) {
+                    perror("epoll_ctl: acceptedSock");
+                    exit(EXIT_FAILURE);
+                }
+                printf("[SERVER] Connected to %s\n", inet_ntoa(*(struct in_addr *)&Addr.sin_addr));
             }
-            count -= ret; //혹시 메시지가 덜 send됐으면, 남은 메시지도 이어서 쭉 보내줌
-            p = p + ret;
+            //2. 연결된 클라이언트로 부터 메시지가 왔을 경우 : else로 해도 되나...?
+            else{
+                //recv 마지막 0은 flag: 상관x
+                if (!(ret = count = recv(events[j].data.fd, data, MAX_DATA, 0))) {
+                    fprintf(stderr, "Connect Closed by Client\n");
+                    break;
+                }
+                if (ret < 0) {
+                    perror("recv");
+                    break;
+                }
+
+                //1. 먼저 나한테 출력하고
+                for (i = 0; i < count; i++)
+                    printf("%c", data[i]);
+                fflush(stdout);
+                //출력 버퍼에 있는 값들 바로 출력. 이렇게 해줘야 바로바로 출력됨.
+
+                p = data;
+
+                //2. 모든 클라이언트에 메시지 쏴줌
+                for(j=0; j<num_accepted; j++){
+                    while (count) {
+                        if ((ret = send(acceptedSock[j], p, count, 0)) < 0) {
+                            perror("send");
+                            break;
+                        }
+                        count -= ret; //혹시 메시지가 덜 send됐으면, 남은 메시지도 이어서 쭉 보내줌
+                        p = p + ret;
+                    }
+                }
+            }
         }
     }
-
     close(acceptedSock);
 error:
     close(serverSock);

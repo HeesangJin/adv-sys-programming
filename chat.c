@@ -187,6 +187,10 @@ launch_server(void)
     struct sockaddr_in Addr;
     socklen_t AddrSize = sizeof(Addr);
 
+    //epoll
+    struct epoll_event ev, events[MAX_EVENTS];
+    int nfds, epollfd;
+
     char data[MAX_DATA], *p;
     int ret, count, i = 1;
 
@@ -299,7 +303,9 @@ launch_server(void)
     }
     close(acceptedSock);
 error:
-    close(serverSock);
+    for(j=0; j<num_accepted; j++){
+        close(serverSock[j]);
+    }
 leave:
     return ret;
 }

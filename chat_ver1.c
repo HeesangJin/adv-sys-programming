@@ -265,7 +265,7 @@ launch_server(void)
                 //acceptedSock 등록
                 ev.events = EPOLLIN;
                 ev.data.fd = acceptedSock[num_accepted-1];
-                if (epoll_ctl(epollfd, EPOLL_CTL_ADD, acceptedSock[num_accepted-1], &ev) == -1) {
+                if (epoll_ctl(epollfd, EPOLL_CTL_ADD, acceptedSock[num_accepted-1], -1) == -1) {
                     perror("epoll_ctl: acceptedSock");
                     exit(EXIT_FAILURE);
                 }

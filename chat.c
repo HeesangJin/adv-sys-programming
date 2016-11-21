@@ -247,7 +247,7 @@ launch_server(void)
         //int  epoll_wait(int  epfd,  struct epoll_event * events, int maxevents, int timeout);
         //1. epollfd, 2. set된 event들, 3. 받아들일 최대 event개수, 
         //4. timeout: -1: 계속 기다림(blocking), 0: 바로 리턴(non blocking)
-        if ((nfds = epoll_wait(epollfd, events, MAX_EVENTS, tm)) == -1) {
+        if ((nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1)) == -1) {
             perror("epoll_pwait");
             exit(EXIT_FAILURE);
         }
@@ -265,7 +265,7 @@ launch_server(void)
                 //acceptedSock 등록
                 ev.events = EPOLLIN;
                 ev.data.fd = acceptedSock[num_accepted-1];
-                if (epoll_ctl(epollfd, EPOLL_CTL_ADD, acceptedSock[num_accepted-1], -1) == -1) {
+                if (epoll_ctl(epollfd, EPOLL_CTL_ADD, acceptedSock[num_accepted-1], &ev) == -1) {
                     perror("epoll_ctl: acceptedSock");
                     exit(EXIT_FAILURE);
                 }

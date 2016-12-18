@@ -29,3 +29,15 @@ $ ls -l f_out
 ```
 $ mkfile 10m 10Mega
 ```
+
+chat 프로그램 실행방법
+```
+$ make
+```
+```
+$ ./gen 20 1
+```
+```
+$ ./chat a
+```
+

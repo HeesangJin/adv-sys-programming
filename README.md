@@ -1,5 +1,20 @@
 # 고급 시스템 프로그래밍 Advanced System Programming
 
+
+chat 프로그램 실행방법
+```
+$ make
+```
+```
+$ ./gen 20 1
+```
+```
+$ ./chat a
+```
+
+
+==
+
 국민대학교 컴퓨터공학부
 
 - 실습을 위한 파일들
@@ -30,14 +45,5 @@ $ ls -l f_out
 $ mkfile 10m 10Mega
 ```
 
-chat 프로그램 실행방법
-```
-$ make
-```
-```
-$ ./gen 20 1
-```
-```
-$ ./chat a
-```
+
 

@@ -8,7 +8,7 @@ merge : merge.c
 	gcc -g -omerge merge.c
 
 chat : chat.c
-	gcc -g -ochat chat.c
+	gcc -g -ochat chat.c -pthread
 
 clean:
 	rm -rf gen merge chat *.o a.out xxx *.dSYM file_*

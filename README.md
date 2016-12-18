@@ -1,7 +1,7 @@
 # 고급 시스템 프로그래밍 Advanced System Programming
 
 
-chat 프로그램 실행방법
+##chat 프로그램 실행방법
 ```
 $ make
 ```
@@ -12,6 +12,8 @@ $ ./gen 20 1
 $ ./chat a
 ```
 
+##chat Document
+http://jinheesang.tistory.com/1
 
 ==
 
